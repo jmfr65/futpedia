@@ -37,3 +37,5 @@
 *   **Keywords:** Uppercase (e.g., `SELECT`, `FROM`, `WHERE`, `UPDATE`, `INSERT INTO`).
 *   **Table and Column Names:** `snake_case` (e.g., `users`, `user_name`, `registration_date`).
 *   **Indentation:** For complex queries, indent clauses to improve readability.
+
+prueba
