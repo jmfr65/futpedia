@@ -1,0 +1,25 @@
+# Archivos de configuración local (crea un archivo de ejemplo y copia este)
+/includes/db_config.php.example
+/includes/db_config.php
+
+# Carpetas de dependencias
+/vendor/
+/node_modules/
+
+# Archivos de logs
+/logs/*.log
+!/logs/.gitkeep
+
+# Archivos de uploads (si no se quieren versionar)
+/uploads/*
+!/uploads/.gitkeep
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
