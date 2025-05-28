@@ -1,185 +1,217 @@
 <?php
 // includes/database.php
 
-// Asegurarnos de que config.php (que carga db_config.php) ya ha sido incluido.
-// Si no, podríamos incluirlo aquí, pero es mejor práctica que el punto de entrada principal lo haga.
-// O verificar si las constantes ya están definidas antes de intentar usarlas.
-// if (!defined('DB_HOST')) {
-//     // Esto podría ser un punto problemático si este archivo se incluye antes que config.php
-//     // o si db_config.php falta.
-//     if (file_exists(__DIR__ . '/config.php')) {
-//         require_once __DIR__ . '/config.php';
-//     } else {
-//         // Situación crítica si config.php tampoco está.
-//          die("Error crítico: No se pudo cargar config.php ni encontrar constantes de BD.");
-//     }
-// }
+if (!defined('FUTPEDIA_ACCESS') || !FUTPEDIA_ACCESS) {
+    die('Acceso directo no permitido a database.php');
+}
+
+// Asegurarse de que las constantes de la base de datos están definidas
+if (!defined('DB_HOST') || !defined('DB_NAME') || !defined('DB_USER') || !defined('DB_PASS')) {
+    $error_message = "Error Crítico: Las constantes de configuración de la base de datos (DB_HOST, DB_NAME, DB_USER, DB_PASS) no están definidas.";
+    if (defined('DEBUG_MODE') && DEBUG_MODE) {
+        die($error_message);
+    } else {
+        error_log($error_message); // Registrar el error
+        die("Error de configuración del sistema. Por favor, contacte al administrador."); // Mensaje genérico
+    }
+}
 
 class Database {
-    private $host;
-    private $db_name;
-    private $username;
-    private $password;
-    private $conn;
-    private $stmt;
+    private string $host = DB_HOST;
+    private string $db_name = DB_NAME;
+    private string $username = DB_USER;
+    private string $password = DB_PASS;
+    private string $charset = 'utf8mb4'; // Recomendado para soporte completo de Unicode
 
+    private ?PDO $pdo = null;
+    private ?PDOStatement $stmt = null;
+    private ?string $error = null;
+
+    /**
+     * Constructor: Establece la conexión a la base de datos.
+     */
     public function __construct() {
-        // Cargar credenciales solo si están definidas (desde db_config.php via config.php)
-        if (defined('DB_HOST') && defined('DB_NAME') && defined('DB_USER') && defined('DB_PASS')) {
-            $this->host = DB_HOST;
-            $this->db_name = DB_NAME;
-            $this->username = DB_USER;
-            $this->password = DB_PASS;
-        } else {
-            // Manejar el caso donde las constantes de BD no están definidas
-            $errorMessage = "Error de configuración de base de datos: Las constantes DB_HOST, DB_NAME, DB_USER, DB_PASS no están definidas. Asegúrate de que includes/db_config.php exista y sea correcto, y que includes/config.php se cargue primero.";
-            if (defined('DEBUG_MODE') && DEBUG_MODE) {
-                die($errorMessage);
-            } else {
-                error_log($errorMessage); // Loguear el error en producción
-                die("Error de conexión. Por favor, inténtalo más tarde."); // Mensaje genérico para producción
-            }
-        }
-
-        // DSN (Data Source Name) para PDO
-        $dsn = 'mysql:host=' . $this->host . ';dbname=' . $this->db_name . ';charset=utf8mb4';
+        $dsn = "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=" . $this->charset;
         $options = [
-            PDO::ATTR_PERSISTENT => true, // Conexiones persistentes (opcional, puede mejorar rendimiento)
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, // Lanzar excepciones en errores
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // Devolver resultados como arrays asociativos
-            PDO::ATTR_EMULATE_PREPARES => false, // Usar preparaciones nativas (más seguro)
+            PDO::ATTR_PERSISTENT => true,             // Conexiones persistentes (opcional, puede mejorar rendimiento)
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, // Lanzar excepciones en errores PDO
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // Modo de obtención por defecto: array asociativo
+            PDO::ATTR_EMULATE_PREPARES => false,      // Deshabilitar emulación de preparadas para seguridad y rendimiento real
         ];
 
         try {
-            $this->conn = new PDO($dsn, $this->username, $this->password, $options);
+            $this->pdo = new PDO($dsn, $this->username, $this->password, $options);
         } catch (PDOException $e) {
-            $errorMessage = "Error de conexión a la base de datos: " . $e->getMessage();
-            // En modo debug, muestra el error detallado. En producción, un mensaje genérico.
+            $this->error = $e->getMessage();
+            $log_message = "Error de Conexión a la Base de Datos: " . $this->error;
+            error_log($log_message); // Siempre registrar el error
+
             if (defined('DEBUG_MODE') && DEBUG_MODE) {
-                die($errorMessage);
+                // En modo debug, podemos ser más explícitos o incluso detener la ejecución
+                die($log_message . "<br>Por favor, verifica tus credenciales en includes/db_config.php y que el servidor MySQL esté corriendo.");
             } else {
-                error_log("Error de conexión PDO: " . $e->getMessage()); // Loguear el error
-                die("Error al conectar con la base de datos. Por favor, contacta al administrador.");
+                // En producción, un mensaje más genérico o manejarlo de otra forma
+                // Podríamos lanzar una excepción personalizada aquí para ser capturada más arriba
+                // Por ahora, el script que intente usar $db->getConnection() recibirá null.
             }
         }
     }
 
-    // Método para obtener la conexión PDO (si se necesita externamente, aunque es mejor encapsular)
-    public function getConnection() {
-        return $this->conn;
+    /**
+     * Devuelve la instancia de PDO.
+     * @return PDO|null La instancia de PDO si la conexión fue exitosa, null en caso contrario.
+     */
+    public function getConnection(): ?PDO {
+        return $this->pdo;
     }
 
-    // Preparar la consulta
-    public function query($sql) {
-        try {
-            $this->stmt = $this->conn->prepare($sql);
-        } catch (PDOException $e) {
-            $this->handleQueryError($e, $sql);
-        }
-    }
-
-    // Vincular valores (bind)
-    public function bind($param, $value, $type = null) {
-        if (is_null($this->stmt)) {
-             // Esto podría ocurrir si query() falló y no se manejó o si bind() se llama antes de query()
-            if (defined('DEBUG_MODE') && DEBUG_MODE) {
-                die("Error: Intento de bind en una declaración no preparada. ¿Llamaste a query() primero?");
-            } else {
-                error_log("Error: Intento de bind en una declaración no preparada.");
-                // Podrías lanzar una excepción aquí también
-                throw new Exception("Error interno del servidor al preparar la consulta.");
-            }
+    /**
+     * Prepara una sentencia SQL.
+     * @param string $sql La consulta SQL a preparar.
+     */
+    public function query(string $sql): void {
+        if (!$this->pdo) {
+            $this->error = "No hay conexión PDO disponible para preparar la consulta.";
+            if (defined('DEBUG_MODE') && DEBUG_MODE) { echo "<p style='color:red;'>Error: " . $this->error . "</p>"; }
+            return;
         }
         try {
-            if (is_null($type)) {
-                switch (true) {
-                    case is_int($value):
-                        $type = PDO::PARAM_INT;
-                        break;
-                    case is_bool($value):
-                        $type = PDO::PARAM_BOOL;
-                        break;
-                    case is_null($value):
-                        $type = PDO::PARAM_NULL;
-                        break;
-                    default:
-                        $type = PDO::PARAM_STR;
-                }
-            }
-            $this->stmt->bindValue($param, $value, $type);
+            $this->stmt = $this->pdo->prepare($sql);
         } catch (PDOException $e) {
-            $this->handleQueryError($e, "binding parameter " . $param);
+            $this->error = "Error al preparar la consulta: " . $e->getMessage() . " | SQL: " . $sql;
+            if (defined('DEBUG_MODE') && DEBUG_MODE) { echo "<p style='color:red;'>Error: " . $this->error . "</p>"; }
         }
     }
 
-    // Ejecutar la consulta preparada
-    public function execute() {
+    /**
+     * Vincula un valor a un parámetro nombrado o posicional en la sentencia SQL.
+     * @param string|int $param El identificador del parámetro (ej. :nombre o 1).
+     * @param mixed $value El valor a vincular.
+     * @param int|null $type El tipo de dato PDO (PDO::PARAM_STR, PDO::PARAM_INT, etc.). Si es null, se determina automáticamente.
+     */
+    public function bind($param, $value, $type = null): void {
+        if (!$this->stmt) {
+            $this->error = "No hay sentencia preparada para vincular parámetros.";
+             if (defined('DEBUG_MODE') && DEBUG_MODE) { echo "<p style='color:red;'>Error: " . $this->error . "</p>"; }
+            return;
+        }
+        if (is_null($type)) {
+            switch (true) {
+                case is_int($value):
+                    $type = PDO::PARAM_INT;
+                    break;
+                case is_bool($value):
+                    $type = PDO::PARAM_BOOL;
+                    break;
+                case is_null($value):
+                    $type = PDO::PARAM_NULL;
+                    break;
+                default:
+                    $type = PDO::PARAM_STR;
+            }
+        }
+        $this->stmt->bindValue($param, $value, $type);
+    }
+
+    /**
+     * Ejecuta la sentencia preparada.
+     * @return bool True en caso de éxito, False en caso de fallo.
+     */
+    public function execute(): bool {
+        if (!$this->stmt) {
+            $this->error = "No hay sentencia preparada para ejecutar.";
+            if (defined('DEBUG_MODE') && DEBUG_MODE) { echo "<p style='color:red;'>Error: " . $this->error . "</p>"; }
+            return false;
+        }
         try {
             return $this->stmt->execute();
         } catch (PDOException $e) {
-            $this->handleQueryError($e, "executing statement");
+            $this->error = "Error al ejecutar la consulta: " . $e->getMessage() . " | SQL: " . $this->stmt->queryString;
+            if (defined('DEBUG_MODE') && DEBUG_MODE) { echo "<p style='color:red;'>Error: " . $this->error . "</p>"; }
+            return false;
         }
     }
 
-    // Obtener todos los resultados como un array de objetos (o asociativo según ATTR_DEFAULT_FETCH_MODE)
-    public function resultSet() {
-        $this->execute();
-        return $this->stmt->fetchAll();
-    }
-
-    // Obtener un único resultado
-    public function single() {
-        $this->execute();
-        return $this->stmt->fetch();
-    }
-
-    // Obtener el número de filas afectadas
-    public function rowCount() {
-        if ($this->stmt) {
-            return $this->stmt->rowCount();
+    /**
+     * Obtiene todos los resultados de la consulta como un array de arrays asociativos.
+     * @return array|false Un array de resultados o false en caso de error.
+     */
+    public function resultSet(): array|false {
+        if ($this->execute()) {
+            return $this->stmt->fetchAll(PDO::FETCH_ASSOC);
         }
-        return 0; // O manejar como error si stmt no está inicializado
+        return false;
     }
 
-    // Obtener el ID del último registro insertado
-    public function lastInsertId() {
-        try {
-            return $this->conn->lastInsertId();
-        } catch (PDOException $e) {
-            // Esto puede fallar si el driver no lo soporta o si la última consulta no fue un INSERT
-            // o si la tabla no tiene auto-incremento.
-            $this->handleQueryError($e, "getting lastInsertId");
+    /**
+     * Obtiene un único resultado de la consulta como un array asociativo.
+     * @return array|false Un array asociativo del resultado o false si no hay resultado o en caso de error.
+     */
+    public function single(): array|false {
+        if ($this->execute()) {
+            return $this->stmt->fetch(PDO::FETCH_ASSOC);
         }
+        return false;
     }
 
-    // Transacciones
-    public function beginTransaction() {
-        return $this->conn->beginTransaction();
+    /**
+     * Obtiene el número de filas afectadas por la última sentencia DELETE, INSERT o UPDATE.
+     * @return int El número de filas afectadas.
+     */
+    public function rowCount(): int {
+        return $this->stmt ? $this->stmt->rowCount() : 0;
     }
 
-    public function endTransaction() {
-        return $this->conn->commit();
+    /**
+     * Devuelve el ID de la última fila insertada o el valor de una secuencia.
+     * @param string|null $name Nombre del objeto de secuencia del cual se debe devolver el ID (para algunos drivers).
+     * @return string|false El ID de la última fila insertada, o false en caso de fallo.
+     */
+    public function lastInsertId(string $name = null): string|false {
+        return $this->pdo ? $this->pdo->lastInsertId($name) : false;
     }
 
-    public function cancelTransaction() {
-        return $this->conn->rollBack();
+    /**
+     * Inicia una transacción.
+     * @return bool True en caso de éxito, False en caso de fallo.
+     */
+    public function beginTransaction(): bool {
+        return $this->pdo ? $this->pdo->beginTransaction() : false;
     }
 
-    // Manejador de errores de consulta centralizado
-    private function handleQueryError(PDOException $e, $context = "a database operation") {
-        $errorMessage = "Error durante " . $context . ": " . $e->getMessage();
-        if (defined('DEBUG_MODE') && DEBUG_MODE) {
-            // Podríamos añadir más detalles aquí, como el SQL si estuviera disponible y fuera seguro mostrarlo.
-            // Por ejemplo, si $this->stmt->queryString estuviera disponible y fuera el SQL original.
-            // $sql = isset($this->stmt) && property_exists($this->stmt, 'queryString') ? $this->stmt->queryString : "No SQL disponible";
-            // die($errorMessage . " | SQL: " . $sql);
-            die($errorMessage);
+    /**
+     * Confirma una transacción.
+     * @return bool True en caso de éxito, False en caso de fallo.
+     */
+    public function commit(): bool {
+        return $this->pdo ? $this->pdo->commit() : false;
+    }
 
-        } else {
-            error_log("Error PDO: " . $errorMessage);
-            // No relanzar la excepción directamente al usuario en producción si contiene info sensible.
-            // Considera lanzar una excepción más genérica o simplemente die().
-            die("Ocurrió un error con la base de datos. Por favor, inténtalo de nuevo más tarde.");
+    /**
+     * Revierte una transacción.
+     * @return bool True en caso de éxito, False en caso de fallo.
+     */
+    public function rollBack(): bool {
+        return $this->pdo ? $this->pdo->rollBack() : false;
+    }
+
+    /**
+     * Devuelve el último mensaje de error.
+     * @return string|null El mensaje de error, o null si no hay error.
+     */
+    public function getError(): ?string {
+        return $this->error;
+    }
+
+    /**
+     * Método de ayuda para debug: muestra información sobre la última consulta preparada.
+     * Solo para uso en desarrollo.
+     */
+    public function debugDumpParams(): void {
+        if ($this->stmt && defined('DEBUG_MODE') && DEBUG_MODE) {
+            echo "<pre>Debug PDO Statement:\n";
+            $this->stmt->debugDumpParams();
+            echo "</pre>";
         }
     }
 }
