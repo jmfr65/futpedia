@@ -1,110 +1,192 @@
-# Plan General del Proyecto: Futpedia
+# Plan de Trabajo - Futpedia
 
-**Repositorio:** [jmfr65/futpedia](https://github.com/jmfr65/futpedia)
-**Fecha de Última Actualización:** 2025-05-28 (Actualizar esta fecha al subir)
-
-## Visión General
-Futpedia será una aplicación web para gestionar y mostrar información relacionada con el fútbol, incluyendo noticias, equipos, jugadores, resultados, y más. Contará con un sistema de usuarios con diferentes roles y un panel de administración para la gestión de contenidos.
-
-## Fases del Proyecto y Tareas
-
-### Fase 0: Organización y Base de la Web
-
-**0.0. Preparativos Iniciales**
-
--   [x] Configurar el entorno de desarrollo local (servidor web como Apache/Nginx, PHP, MySQL/MariaDB). (Asumo que WAMP64 cumple esto)
--   [x] Inicializar un repositorio Git para el control de versiones del proyecto.
--   [ ] Definir y documentar las convenciones de codificación (PHP, JS, CSS, SQL). (No lo hemos hecho formalmente)
--   [ ] Crear un archivo README.md inicial con la descripción del proyecto y enlaces a la documentación (este plan). (Lo harás ahora)
-
-**0.1. Estructura de Carpetas del Proyecto**
-
--   [x] Crear la estructura de carpetas base según lo definido:
-    -   `/public_html` (o raíz del dominio, ej. htdocs, www) -> `public` en nuestro caso.
-    -   `index.php` (Punto de entrada principal) -> `public/index.php`
-    -   [ ] `.htaccess` (Si se usa Apache, para reescritura de URLs amigables y seguridad). (No implementado aún)
-    -   [ ] `/admin` (Panel de administración) (Carpeta no creada aún)
-        -   [ ] `index.php` (Punto de entrada del panel de admin)
-    -   `/includes` (Funciones, conexión a BD, helpers, lógica de negocio)
-        -   [x] `config.php` (Configuraciones generales, rutas, etc. NO credenciales de BD).
-        -   [ ] `db_config.php` (Credenciales de BD - COLOCAR FUERA DEL DOCUMENT ROOT SI ES POSIBLE). (Credenciales actualmente en `config.php`)
-        -   [x] `database.php` (Clase/funciones para la conexión PDO y operaciones comunes de BD).
-        -   [x] `functions.php` (Funciones globales de utilidad). (Parcialmente, algunas funciones están aquí)
-        -   [x] `session.php` (Manejo de sesiones). (Funciones de sesión en `config.php` o `functions.php`)
-        -   [ ] `auth.php` (Lógica de autenticación y roles). (Lógica dispersa, podría centralizarse)
-        -   [x] `localization.php` (Funciones para manejo de idiomas y carga de textos).
-        -   [ ] `senior_admin_logic.php` (Contendrá la lógica y reglas del Asistente Virtual SeniorAdmin).
-    -   `/assets` (Recursos estáticos: `/css`, `/js`, `/images`, `/fonts`)
-        -   [x] `assets/css/style.css` creado.
-    -   `/templates` (Plantillas HTML comunes: `header.php`, `footer.php`, `email_templates/`, etc.)
-        -   [x] `header.php`, `footer.php` creados.
-    -   [ ] `/api` (Futuro: Endpoints para la app móvil, ej. `/v1/`)
-    -   [ ] `/logs` (Para logs de errores de PHP, y logs de SeniorAdmin IA, fuera del document root si es posible)
-    -   [ ] `/uploads` (Para archivos subidos por usuarios, ej. logos de equipos, fuera del document root o con acceso restringido)
-    -   `/languages` (Archivos de idioma: `es.php`, `en.php`, `fr.php`, `pt.php`)
-        -   [x] `es.php`, `en.php` creados. `fr.php`, `pt.php` creados como stubs.
-    -   [ ] `/cron_jobs` (Scripts para tareas programadas, ej. `procesar_contribuciones_ia.php`)
-
-**0.2. Conexión Segura a la Base de Datos y Definición de Tablas**
-
--   [ ] Crear `includes/db_config.php` (idealmente fuera de `public_html`) con credenciales de BD. (Credenciales en `config.php`)
--   [x] Desarrollar `includes/database.php` con conexión PDO.
--   [x] Creación/Adaptación de Tablas en la Base de Datos (SQL DDL):
-    -   [x] Tabla `usuarios` (id_usuario, nombre_usuario, email, password_hash, rol ('superadmin', 'senior_admin_ia', 'editor', 'registrado'), puntos, idioma_interfaz_preferido, fecha_registro, ultimo_login, activo, token_verificacion_email, email_verificado, token_reset_password, fecha_expiracion_token_reset, fecha_ultima_actividad). (Hemos implementado los campos esenciales: id, username, email, password_hash, role, is_active, created_at, updated_at. Faltan muchos de los campos detallados aquí).
-    -   [ ] Tabla `confederaciones` (...)
-    -   [ ] Tabla `paises` (...)
-    -   [ ] Tabla `regiones` (...)
-    -   [ ] Tabla `competiciones` (...)
-    -   [ ] Tabla `equipos` (...)
-    -   [ ] Tabla `partidos` (...)
-    -   [ ] Tabla `contribuciones` (...)
-    -   [ ] Tabla `editor_permisos_seccion` (...)
-    -   [ ] Tabla `log_actividad_admin` (...)
-    -   [ ] (Opcional) Tabla `log_puntos` (...)
--   [ ] Documentar el esquema final de la BD (diagrama ERD y descripción de tablas/campos).
--   [ ] Cargar los datos existentes de las tablas rsssf_... en las nuevas tablas renombradas (competiciones, partidos), realizando las adaptaciones de datos necesarias.
-
-**0.3. Página de “En Construcción”**
-
--   [ ] Crear `en_construccion.html` multilingüe en `public_html`.
--   [ ] Configurar `index.php` o `.htaccess` para mostrarla. (No aplica actualmente ya que tenemos un `index.php` funcional)
-
-**0.4. Diseño y Experiencia de Usuario (Consideraciones Iniciales de Monetización)**
-
--   [ ] (M) Durante el diseño inicial de wireframes/mockups, identificar visualmente las ubicaciones para los 2 anuncios nativos (AdSense) permitidos por página (header, footer, sidebars, in-content), asegurando que no comprometan la usabilidad ni el diseño "rompedor".
--   [ ] (M) Definir cómo se adaptarán estas ubicaciones de anuncios en la versión móvil.
+A continuación se presenta el plan de trabajo actualizado con la estructura que permitirá ir “tildando” (✔) los avances de manera progresiva. El repositorio local se denominará “futpedia” y la base de datos se encuentra en el archivo “archivo” (con las tablas establecidas).
 
 ---
-### Fase 1: Sistema de Usuarios y Autenticación
 
-**1.0. Preparación del Sistema de Idiomas y Sesiones**
+## 1. Definición y Organización del Proyecto
 
--   [x] Desarrollar `includes/localization.php` (detectar/establecer idioma, función `__()`).
--   [x] Crear archivos base de idioma (`languages/es.php`, `en.php`, `fr.php`, `pt.php`). (fr, pt son placeholders)
--   [x] Desarrollar `includes/session.php` (inicio seguro, manejo de variables, CSRF tokens). (Manejo básico de sesión implementado, CSRF no explícitamente).
+- [=]  (1.1) Definir el alcance detallado del repositorio de resultados (qué ligas y torneos se incluirán inicialmente).
+- [= ] (1.2) Formalizar la arquitectura orientada a web (desktop/móvil) y la futura API REST.
+- [ ]  (1.3)  Seleccionar los idiomas disponibles: ES (principal), EN, FR, PT
+- [  ] (1.4) Definir roles:
+  - [  ] SuperAdministrador.
+  - [  ] SeniorAdministrador (IA).
+  - [ ] Editores.
+  -  ] Usuarios/Visitantes.
+  • SuperAdministrador (tú):
+– Control total de la plataforma con capacidad para:
+1) Crear, editar o eliminar cualquier dato de la base (confederaciones, países, competiciones, equipos, partidos, usuarios).
+2) Aprobar y/o rechazar contribuciones de la cola de moderación.
+3) Recibir notificaciones cuando los editores crean nuevas competiciones o hacen cambios relevantes fuera del flujo normal (p.ej. torneos críticos).
+4) Gestionar la configuración global de la aplicación (ajustes de idioma, mantenimiento, etc.).
 
-**1.1. Registro, Login y Logout de Usuarios**
+• SeniorAdministrador (Asistente Virtual / IA):
+– Encargado de revisar automáticamente las contribuciones que llegan de usuarios registrados o anónimos.
+– Aplica reglas de validación, comprueba coherencia de datos (fechas, marcadores, duplicados, etc.) y decide:
+1) Aprobar automáticamente la contribución si cumple todas las validaciones.
+2) Rechazarla si encuentra errores claros (informando al usuario, si procede).
+3) Marcarla para “revisión humana” (editores o SuperAdministrador) en caso de dudas.
 
--   [x] Registro: Formulario (`registro.php` con CAPTCHA - CAPTCHA no implementado), script de procesamiento (`registro.php` mismo archivo, con validación, hash de contraseña, inserción en BD con rol 'registrado', envío de email de verificación - envío de email no implementado). (Parcialmente Completado)
--   [x] Login: Formulario (`login.php`), script de procesamiento (`login.php` mismo archivo, con validación, `password_verify()`, creación de sesión, actualización `ultimo_login` - `ultimo_login` no implementado). (Parcialmente Completado)
--   [x] Logout: Script (`logout.php`) para destruir sesión.
--   [ ] Verificación de Email: Script (`verificar_email.php`) para validar token y activar cuenta.
--   [ ] Recuperación de Contraseña: Formularios y scripts para solicitar y procesar reseteo.
+• Editores (asignados por país/competición):
+– Responsables de supervisar la información y gestionar competiciones dentro de su ámbito (por ejemplo, editor de Francia, editor de Champions League).
+– Pueden:
+1) Crear y/o editar ligas, equipos, partidos, resultados en los países o torneos que tienen asignados.
+2) Revisar contribuciones que el SeniorAdministrador deje marcadas como “requiere intervención humana”.
+– Notifican al SuperAdministrador tras crear nuevas competiciones, para que él también esté al tanto de la evolución.
 
-**1.2. Gestión de Roles y Permisos (Lógica Base)**
+• Usuarios/Visitantes:
+– Pueden consultar datos públicos (resultados, clasificaciones, historiales).
+– Si se registran, pueden enviar aportes de nuevos resultados, correcciones o inclusiones de ligas/tornéos a la cola de moderación.
+– Sus contribuciones pasan automáticamente por el filtro del SeniorAdministrador (IA). Si procede, terminan en manos de algún editor o del SuperAdministrador para aprobación final.
 
--   [x] Desarrollar `includes/auth.php` (funciones `is_logged_in()`, `get_user_role()`, `has_permission()`, `check_editor_permission()`). (`is_logged_in()` existe, `get_user_role()` implícito en `$_SESSION['user_role']`. El resto no). (Parcialmente Completado)
--   [ ] Implementar lógica de redirección basada en permisos.
--   [x] Crear el usuario SuperAdmin (jmfr65) manualmente en BD con rol 'superadmin'. (Lo hiciste tú).
--   [ ] (Opcional) Crear un usuario placeholder `senior_admin_ia` en BD con rol 'senior_admin_ia' (...)
+En conjunto, este modelo de roles garantiza un flujo de moderación escalonado y eficiente, donde la IA filtra y agiliza la mayor parte de solicitudes, dejando procesos avanzados o dudosos en manos de editores y el control fundamental en manos del SuperAdministrador.
 
-**1.3. Sistema de Puntos/Logros Básico**
 
--   [ ] Crear función `add_points($user_id, $points, $reason)` (actualizar `usuarios.puntos` y opcional `log_puntos`).
--   [ ] Integrar `add_points()` para registro y verificación de email.
--   [ ] (Diseño) Definir dónde mostrar los puntos del usuario.
--   [ ] (Planificación) Listar todas las acciones futuras que otorgarán puntos (según enfoque fútbol discutido).
+## 2. Entorno de Desarrollo
+
+- [ ] **Servidor (LAMP o equivalente)**  
+  - [] Configurar PHP (versión recomendada, extensiones, etc.).  
+  - [ ] Configurar MySQL/MariaDB (creación de usuario, base de datos).  
+  - [ ] Ajustar parámetros para multilenguaje y despliegue móvil.
+
+- [ ] **Estructura de Carpetas y Archivos**  
+  - [ ] /public_html para documentos públicos (HTML, CSS, JS).  
+  - [ ] /admin para panel de administración.  
+  - [ ] /api para endpoints REST (inicialmente básicos).  
+  - [ ] /includes o /core para lógica compartida (conexiones, validaciones...).  
+  - [ ] /assets para recursos estáticos (CSS, JS, imágenes).  
+  - [ ] /languages para archivos ES, EN, FR, PT.
 
 ---
-*(El resto de las fases (2, 3, 4, 5, 6) y Consideraciones Adicionales quedan pendientes, ya que aún no hemos abordado esas tareas).*
+
+## 3. Modelado de Datos y Configuración de la Base de Datos
+
+- [ ] **Tablas Principales**  
+  - [ ] Verificar existencia o creación de:
+    - confederaciones  
+    - paises  
+    - regiones  
+    - competiciones  
+    - equipos  
+    - partidos  
+    - usuarios (roles, puntos, estado)  
+    - contribuciones (cola de moderación)  
+    - logs (si corresponde)
+- [ ] Garantizar que las tablas existentes de “archivo” no se modifiquen de forma disruptiva.
+- [ ] Añadir campos para multilenguaje (ej. “nombre_en”, “nombre_fr”).
+- [ ] Crear índices para acelerar búsquedas (especialmente en consultas para web móvil).
+
+---
+
+## 4. Diseño de Roles y Flujo de Contribuciones
+
+- [ ] **Registro e Inicio de Sesión**  
+  - [ ] Implementar verificación de email.  
+  - [ ] Distinguir roles de usuario.  
+- [ ] **Flujo de Contribuciones**  
+  - [ ] Usuario/Visitante envía datos (partido, resultado...).  
+  - [ ] SeniorAdministrador (IA) evalúa la contribución (aprobar/rechazar/escala).  
+  - [ ] Editores/SuperAdministrador revisan opciones escaladas.
+- [ ] **Asignación de Editores**  
+  - [ ] Configurar en BD la relación editor <-> país, liga o zona.
+
+---
+
+## 5. Estructura de la Aplicación (Web Escritorio, Web Móvil y Futuras Apps)
+
+### 5a. Frontend Escritorio
+- [ ] Página principal (buscadores, últimas actualizaciones, destacados).
+- [ ] Detalles de competiciones, equipos, partidos y formularios de contribución.
+- [ ] Selector de idioma (ES, EN, FR, PT).
+
+### 5b. Frontend Móvil
+- [ ] Diseño responsive o subdominio “m.”.
+- [ ] Menús ligeros, formularios adaptados.
+- [ ] Optimizar rendimiento y datos.
+
+### 5c. Panel de Administración
+- [ ] Sección /admin con acceso restringido.
+- [ ] CRUD de confederaciones, países, competiciones, equipos, partidos.
+- [ ] Moderación de contribuciones.
+- [ ] Gestión de usuarios y roles.
+
+### 5d. API para Futura App Nativa
+- [ ] Rutas en /api (p. ej. /api/v1/competitions, /api/v1/matches).
+- [ ] Autenticación (API Keys, tokens).
+- [ ] Respuestas JSON con soporte de idiomas.
+- [ ] Implementar rate limiting.
+
+---
+
+## 6. Implementación Multilingüe
+
+- [ ] Idioma principal: ES.
+- [ ] Archivos de recursos: ES, EN, FR, PT.
+- [ ] Ajustar plantillas para cargar cadenas según selección del usuario.
+- [ ] Añadir parámetros de locale para fechas/números.
+- [ ] Extender bases de datos para almacenar información en varios idiomas.
+
+---
+
+## 7. Fases de Desarrollo
+
+### 7a. Fase Inicial (Infraestructura y BD)
+- [ ] Configurar entorno (servidor y BD en local).
+- [ ] Crear tablas faltantes (usuarios, contribuciones).
+- [ ] Definir conexión PDO, CSRF, validaciones.
+
+### 7b. Fase de Sistema de Usuarios y Multilenguaje
+- [ ] Registrar/Login con verificación de email.
+- [ ] Roles.
+- [ ] Carga de archivos de idioma.
+- [ ] Plantillas base para escritorio y móvil.
+
+### 7c. Fase de Moderación (SeniorAdministrador IA)
+- [ ] Cola de contribuciones.
+- [ ] Reglas iniciales del asistente virtual (detectar incoherencias, etc.).
+- [ ] Cron job o script de procesamiento periódico.
+- [ ] Interfaz admin de moderación.
+
+### 7d. Fase de API REST para la App
+- [ ] Endpoints básicos (/api/v1/...). 
+- [ ] Manejo de tokens y seguridad.
+- [ ] Documentar con ejemplos (JSON).
+- [ ] Versión inicial (v1).
+
+### 7e. Fase de Optimización y Extensión
+- [ ] Mejorar rendimiento (cachés, índices, minificación de JS/CSS).
+- [ ] SEO y multilengües (hreflang, sitemaps).
+- [ ] Posible integración de foros/comunidad.
+- [ ] Analíticas de aportes, revisiones y volumen de datos.
+
+---
+
+## 8. Seguridad y Rendimiento
+
+- [ ] Validaciones (evitar XSS, SQLi).
+- [ ] Gestión sólida de sesiones (cookies seguras, regeneración de ID).
+- [ ] Minimización de recursos (CSS/JS).
+- [ ] Caching (Opcache, CDN, memcached si aplica).
+
+---
+
+## 9. Lanzamiento, Mantenimiento y Evolución
+
+- [ ] Pruebas en entorno local/DEV.
+- [ ] Ajustes finales (responsive, layout, traducciones).
+- [ ] Lanzamiento oficial (monitorizar usuarios, feedback).
+- [ ] Desarrollo de la App nativa (Android/iOS) cuando el API esté listo.
+- [ ] Mantenimiento continuo:
+  - [ ] Corrección de bugs.
+  - [ ] Mejoras en IA.
+  - [ ] Optimización de la estructura de datos.
+
+---
+
+### Cómo usar esta Checklist
+1. Usa este documento como referencia del estado de cada tarea.  
+2. Marca con ✔ (o cualquier símbolo) cuando completes cada paso.  
+3. Agrega nuevos puntos en la sección correspondiente si surgen necesidades adicionales.  
+
 ---
